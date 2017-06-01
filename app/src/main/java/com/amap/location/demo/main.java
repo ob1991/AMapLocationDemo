@@ -1,8 +1,10 @@
 package com.amap.location.demo;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
@@ -12,7 +14,13 @@ import android.widget.Toast;
 
 import com.amap.location.demo.DB.NewService;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by Admin on 2017/05/24.
@@ -25,6 +33,7 @@ public class main extends Activity {
     private Bundle savedInstanceState;
     private EditText textname;
     private EditText textpassword;
+    private ProgressDialog loginProgress;
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -46,6 +55,7 @@ public class main extends Activity {
         });
 
     }
+
     private class mybuttonlistener implements View.OnClickListener {
         boolean result=false;
         String name;
@@ -60,9 +70,11 @@ public class main extends Activity {
                 // TODO Auto-generated catch block
                 e1.printStackTrace();
             }
-
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
             try {
-                result = NewService.save(name,password,"http://127.0.0.1:8080/Register/ManageServlet");
+                result = NewService.save(name,password,"http://202.118.16.50:8101/locationlogin.ashx");
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -72,6 +84,8 @@ public class main extends Activity {
             }else{
                 Toast.makeText(main.this, R.string.error, Toast.LENGTH_SHORT).show();
             }
+                }
+            }).start();
         }
     }
 }

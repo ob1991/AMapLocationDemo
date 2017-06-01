@@ -52,7 +52,7 @@ public class NewService {
         HttpsURLConnection conn = (HttpsURLConnection)new URL(url.toString()).openConnection();
         conn.setConnectTimeout(1000);
         conn.setRequestMethod("GET");
-        if(conn.getResponseCode() == 200){
+        if(conn.getResponseCode() == 1){
             return true;
         }
         return false;
