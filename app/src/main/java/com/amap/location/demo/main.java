@@ -41,6 +41,8 @@ public class main extends Activity {
                 if(msg.obj!=null&& msg.obj.toString().equals("1")){
                     Toast.makeText(main.this, R.string.ok, Toast.LENGTH_SHORT).show();
                     Intent intent =new Intent(main.this,LocationModeSourceActivity.class);
+                    intent.putExtra("name",textname.getText().toString());
+                    intent.putExtra("password", textpassword.getText().toString());
                     startActivity(intent);
                 }else{
                     Toast.makeText(main.this, R.string.error, Toast.LENGTH_SHORT).show();
@@ -62,11 +64,10 @@ public class main extends Activity {
         bt2.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view) {
-                Intent intent =new Intent(main.this,LocationModeSourceActivity.class);
+                Intent intent =new Intent(main.this,GeoFence_Activity.class);
                 startActivity(intent);
             }
         });
-
     }
     class sendValueToServer implements Runnable
     {

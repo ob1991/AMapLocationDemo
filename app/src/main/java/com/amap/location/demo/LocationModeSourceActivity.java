@@ -10,11 +10,18 @@ import android.view.View;
 import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.CompoundButton;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
 
+import com.amap.api.location.AMapLocation;
+import com.amap.api.location.AMapLocationClient;
+import com.amap.api.location.AMapLocationClientOption;
+import com.amap.api.location.AMapLocationListener;
 import com.amap.api.maps.AMap;
+import com.amap.api.maps.CameraUpdateFactory;
+import com.amap.api.maps.LocationSource;
 import com.amap.api.maps.MapView;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.MyLocationStyle;
@@ -29,24 +36,18 @@ import java.util.List;
 /**
  * AMapV2地图中介绍定位几种类型
  */
-	public class LocationModeSourceActivity extends Activity implements AMap.OnMyLocationChangeListener, AdapterView.OnItemSelectedListener {
+	public class LocationModeSourceActivity extends Activity  implements
+		AMapLocationListener,
+		LocationSource,
+		AdapterView.OnItemSelectedListener {
 	private AMap aMap;
 	private MapView mapView;
 	private Spinner spinnerGps;
 	private String[] itemLocationTypes = { "展示", "定位", "追随", "旋转", "旋转位置", "追随不移动到中心点", "旋转不移动到中心点", "旋转位置不移动到中心点" };
 	private MyLocationStyle myLocationStyle;
-
-	private double Lat_A = 39.981167;
-	private double Lon_A = 116.345103;
-
-	private double Lat_B = 39.981265;
-	private double Lon_B = 116.347152;
-
-	private double Lat_C = 39.979387;
-	private double Lon_C = 116.347356;
-
-	private double Lat_D = 39.979313;
-	private double Lon_D = 116.348896;
+	private AMapLocationClient mlocationClient;
+	private OnLocationChangedListener mListener;
+	private AMapLocationClientOption mLocationOption;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -66,6 +67,8 @@ import java.util.List;
 	private void init() {
 		if (aMap == null) {
 			aMap = mapView.getMap();
+			aMap.getUiSettings().setRotateGesturesEnabled(false);
+			aMap.moveCamera(CameraUpdateFactory.zoomBy(6));
 			setUpMap();
 		}
 		spinnerGps = (Spinner) findViewById(R.id.spinner_gps);
@@ -77,7 +80,7 @@ import java.util.List;
 		spinnerGps.setOnItemSelectedListener(this);
 
 		//设置SDK 自带定位消息监听
-		aMap.setOnMyLocationChangeListener(this);
+
 	}
 
 	/**
@@ -109,8 +112,38 @@ import java.util.List;
 			e.printStackTrace();
 		}
 	}
+	@Override
+	public void activate(LocationSource.OnLocationChangedListener listener) {
+		mListener = listener;
+		if (mlocationClient == null) {
+			mlocationClient = new AMapLocationClient(this);
+			mLocationOption = new AMapLocationClientOption();
+			// 设置定位监听
+			mlocationClient.setLocationListener(this);
+			// 设置为高精度定位模式
+			mLocationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);
+			// 只是为了获取当前位置，所以设置为单次定位
+			mLocationOption.setOnceLocation(false);
+			//设置定位间隔,单位毫秒,默认为2000ms
+			mLocationOption.setInterval(2000);
+			// 设置定位参数
+			mlocationClient.setLocationOption(mLocationOption);
+			mlocationClient.startLocation();
+		}
+	}
 
-	private void addPolylinesWithColors(LatLng latlng1,LatLng latlng2,float width,int type,int catelog) {
+
+	@Override
+	public void deactivate() {
+		mListener = null;
+		if (mlocationClient != null) {
+			mlocationClient.stopLocation();
+			mlocationClient.onDestroy();
+		}
+		mlocationClient = null;
+	}
+
+	private void addPolylinesWithColors(LatLng latlng1, LatLng latlng2, float width, int type, int catelog) {
 		//用一个数组来存放颜色，四个点对应三段颜色
 		List<Integer> colorList = new ArrayList<Integer>();
 		if(type==0&&catelog==0)
@@ -211,29 +244,48 @@ import java.util.List;
 		mapView.onDestroy();
 	}
 
-	@Override
-	public void onMyLocationChange(Location location) {
-		// 定位回调监听
-		if(location != null) {
-			Log.e("amap", "onMyLocationChange 定位成功， lat: " + location.getLatitude() + " lon: " + location.getLongitude());
-			Bundle bundle = location.getExtras();
-			if(bundle != null) {
-				int errorCode = bundle.getInt(MyLocationStyle.ERROR_CODE);
-				String errorInfo = bundle.getString(MyLocationStyle.ERROR_INFO);
-				// 定位类型，可能为GPS WIFI等，具体可以参考官网的定位SDK介绍
-				int locationType = bundle.getInt(MyLocationStyle.LOCATION_TYPE);
+//	@Override
+//	public void onMyLocationChange(Location location) {
+//		// 定位回调监听
+//		if(location != null) {
+//			Log.e("amap", "onMyLocationChange 定位成功， lat: " + location.getLatitude() + " lon: " + location.getLongitude());
+//			Bundle bundle = location.getExtras();
+//
+//			if(bundle != null) {
+//				location.getLatitude();//获取纬度
+//				location.getLongitude();//获取经度
+//				int errorCode = bundle.getInt(MyLocationStyle.ERROR_CODE);
+//				String errorInfo = bundle.getString(MyLocationStyle.ERROR_INFO);
+//				// 定位类型，可能为GPS WIFI等，具体可以参考官网的定位SDK介绍
+//				int locationType = bundle.getInt(MyLocationStyle.LOCATION_TYPE);
+//
+//                /*
+//                errorCode
+//                errorInfo
+//                locationType
+//                */
+//				Log.e("amap", "定位信息， code: " + errorCode + " errorInfo: " + errorInfo + " locationType: " + locationType );
+//			} else {
+//				Log.e("amap", "定位信息， bundle is null ");
+//			}
+//		} else {
+//			Log.e("amap", "定位失败");
+//		}
+//	}
 
-                /*
-                errorCode
-                errorInfo
-                locationType
-                */
-				Log.e("amap", "定位信息， code: " + errorCode + " errorInfo: " + errorInfo + " locationType: " + locationType );
+
+	@Override
+	public void onLocationChanged(AMapLocation amapLocation) {
+		if (mListener != null && amapLocation != null) {
+			if (amapLocation != null && amapLocation.getErrorCode() == 0) {
+
+				mListener.onLocationChanged(amapLocation);// 显示系统小蓝点
+
 			} else {
-				Log.e("amap", "定位信息， bundle is null ");
+				String errText = "定位失败," + amapLocation.getErrorCode() + ": "
+						+ amapLocation.getErrorInfo();
+				Log.e("AmapErr", errText);
 			}
-		} else {
-			Log.e("amap", "定位失败");
 		}
 	}
 }

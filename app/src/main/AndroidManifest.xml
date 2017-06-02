@@ -77,7 +77,4 @@
         <activity android:name=".MainActivity" />
         <activity android:name=".LocationModeSourceActivity" />
     </application>
-
-    
-
 </manifest>
