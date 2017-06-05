@@ -2,18 +2,20 @@ package com.amap.location.demo;
 
 
 import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
-import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.CompoundButton;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
+
 import android.widget.Spinner;
+import android.widget.Toast;
 
 import com.amap.api.location.AMapLocation;
 import com.amap.api.location.AMapLocationClient;
@@ -23,42 +25,87 @@ import com.amap.api.maps.AMap;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.LocationSource;
 import com.amap.api.maps.MapView;
+import com.amap.api.maps.UiSettings;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.MyLocationStyle;
 import com.amap.api.maps.model.PolylineOptions;
+import com.amap.location.demo.DB.NetUtils;
+import com.amap.location.demo.DB.socket;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import static android.content.ContentValues.TAG;
 
 /**
  * AMapV2地图中介绍定位几种类型
  */
-	public class LocationModeSourceActivity extends Activity  implements
-		AMapLocationListener,
-		LocationSource,
-		AdapterView.OnItemSelectedListener {
+	public class LocationModeSourceActivity extends Activity
+		implements AMapLocationListener,
+		LocationSource
+//		,AdapterView.OnItemSelectedListener
+{
 	private AMap aMap;
 	private MapView mapView;
 	private Spinner spinnerGps;
-	private String[] itemLocationTypes = { "展示", "定位", "追随", "旋转", "旋转位置", "追随不移动到中心点", "旋转不移动到中心点", "旋转位置不移动到中心点" };
+	private String[] itemLocationTypes = { "10S", "20S", "30S", "40S", "60S", "90S", "120S", "180S" };
+    private final String url="http://202.118.16.50:8101/data.ashx";
 	private MyLocationStyle myLocationStyle;
 	private AMapLocationClient mlocationClient;
 	private OnLocationChangedListener mListener;
 	private AMapLocationClientOption mLocationOption;
+    private double mylat,mylon;
+    String name,password;
+    private Handler handler=new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            // TODO Auto-generated method stub
+            if (msg.what==1) {
+                if(msg.obj!=null){
+                    parseJSONWithJSONObject(msg.obj.toString());
+                }else{
 
+                }
+            }
+        }
+    };
+    private Handler inhandle=new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            // TODO Auto-generated method stub
+            if (msg.what==1) {
+                if(msg.obj!=null){
+                    parseJSONWithJSONObject(msg.obj.toString());
+                }else{
+                    Toast.makeText(LocationModeSourceActivity.this, R.string.error, Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    };
+
+	@Override
+	protected void onStop()
+	{
+		super.onStop();
+
+	}
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);// 不显示程序的标题栏
 		setContentView(R.layout.locationmodesource_activity);
-		mapView = (MapView) findViewById(R.id.map);
+        name= this.getIntent().getStringExtra("name");
+        password= this.getIntent().getStringExtra("password");
+        mapView = (MapView) findViewById(R.id.map);
 		mapView.onCreate(savedInstanceState);// 此方法必须重写
 
 		init();
-
 	}
 
 	/**
@@ -71,16 +118,14 @@ import java.util.List;
 			aMap.moveCamera(CameraUpdateFactory.zoomBy(6));
 			setUpMap();
 		}
-		spinnerGps = (Spinner) findViewById(R.id.spinner_gps);
-		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
-				android.R.layout.simple_spinner_item, itemLocationTypes);
-		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-		spinnerGps.setAdapter(adapter);
-
-		spinnerGps.setOnItemSelectedListener(this);
-
-		//设置SDK 自带定位消息监听
-
+//		spinnerGps = (Spinner) findViewById(R.id.spinner_gps);
+//		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+//				android.R.layout.simple_spinner_item, itemLocationTypes);
+//		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+//		spinnerGps.setAdapter(adapter);
+//
+//		spinnerGps.setOnItemSelectedListener(this);
+//		设置SDK 自带定位消息监听
 	}
 
 	/**
@@ -93,18 +138,52 @@ import java.util.List;
 		aMap.getUiSettings().setMyLocationButtonEnabled(true);// 设置默认定位按钮是否显示
 		aMap.setMyLocationEnabled(true);// 设置为true表示显示定位层并可触发定位，false表示隐藏定位层并不可触发定位，默认是false
 		aMap.setMapTextZIndex(2);
+		aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE));
+		aMap.getUiSettings().setLogoBottomMargin(-50);
+        btnget();
+        // TODO: 2017/06/05
+//        socket mysocket=new socket(inhandle, new Handler(), new Context() {
+//        })
 	}
 
+    class sendValueToServer implements Runnable
+    {
+        Map<String, String> map;
+        public sendValueToServer(Map<String, String> map) {
+            this.map=map;
+        }
+
+        @Override
+        public void run() {
+            String result = NetUtils.getRequest(url, map);
+            Message message = Message.obtain(handler, 1, result);
+            handler.sendMessage(message);
+        }
+    }
+    private void btnget()
+    {
+        try {
+            name = new String(name.getBytes("ISO8859-1"), "UTF-8");
+            password = new String(password.getBytes("ISO8859-1"), "UTF-8");
+            Map<String, String> map=new HashMap<String, String>();
+            map.put("name",name);
+            map.put("password", password);
+            Thread a=new Thread(new LocationModeSourceActivity.sendValueToServer(map));
+			a.start();
+        } catch (UnsupportedEncodingException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+    }
 	private void parseJSONWithJSONObject(String JsonData) {
 		try
 		{
 			JSONArray jsonArray = new JSONArray(JsonData);
 			for (int i=0; i < jsonArray.length(); i++)    {
 				JSONObject jsonObject = jsonArray.getJSONObject(i);
-				String id = jsonObject.getString("id");
-				String name = jsonObject.getString("name");
-				String version = jsonObject.getString("version");
-				System.out.println("id：" + id + ";name：" + name + ";version：" + version);
+                LatLng latLng=new LatLng(Double.parseDouble(jsonObject.getString("Startpointx")),Double.parseDouble(jsonObject.getString("Startpointy")));
+                LatLng latLng1=new LatLng(Double.parseDouble(jsonObject.getString("Endpointx")),Double.parseDouble(jsonObject.getString("Endpointy")));
+                addPolylinesWithColors(latLng,latLng1,Float.parseFloat(jsonObject.getString("Width")),Integer.parseInt(jsonObject.getString("Catlog")),Integer.parseInt(jsonObject.getString("Type")));
 			}
 		}
 		catch (Exception e)
@@ -146,13 +225,13 @@ import java.util.List;
 	private void addPolylinesWithColors(LatLng latlng1, LatLng latlng2, float width, int type, int catelog) {
 		//用一个数组来存放颜色，四个点对应三段颜色
 		List<Integer> colorList = new ArrayList<Integer>();
-		if(type==0&&catelog==0)
+		if(type==1&&catelog==1)
 		colorList.add(Color.RED);
-		else if(type==0&&catelog==1)
+		else if(type==1&&catelog==2)
 		colorList.add(Color.YELLOW);
-		else if(type==1&&catelog==0)
+		else if(type==2&&catelog==1)
 		colorList.add(Color.GREEN);
-		else if(type==1&&catelog==1)
+		else if(type==2&&catelog==2)
 		colorList.add(Color.BLACK);
 
 		PolylineOptions options = new PolylineOptions();
@@ -166,47 +245,47 @@ import java.util.List;
 
 		aMap.addPolyline(options);
 	}
-	@Override
-	public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-		switch (position) {
-			case 0:
-				// 只定位，不进行其他操作
-				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_SHOW));
-				break;
-			case 1:
-				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATE));
-				break;
-			case 2:
-				// 设置定位的类型为 跟随模式
-				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW));
-				break;
-			case 3:
-				// 设置定位的类型为根据地图面向方向旋转
-				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_MAP_ROTATE));
-				break;
-			case 4:
-				// 定位、且将视角移动到地图中心点，定位点依照设备方向旋转，  并且会跟随设备移动。
-				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE));
-				break;
-			case 5 :
-				// 定位、但不会移动到地图中心点，并且会跟随设备移动。
-				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW_NO_CENTER));
-				break;
-			case 6 :
-				// 定位、但不会移动到地图中心点，地图依照设备方向旋转，并且会跟随设备移动。
-				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_MAP_ROTATE_NO_CENTER));
-				break;
-			case 7 :
-				// 定位、但不会移动到地图中心点，定位点依照设备方向旋转，并且会跟随设备移动。
-				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE_NO_CENTER));
-				break;
-		}
-	}
-
-	@Override
-	public void onNothingSelected(AdapterView<?> parent) {
-
-	}
+//	@Override
+//	public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+//		switch (position) {
+//			case 0:
+//				// 只定位，不进行其他操作
+//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_SHOW));
+//				break;
+//			case 1:
+//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATE));
+//				break;
+//			case 2:
+//				// 设置定位的类型为 跟随模式
+//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW));
+//				break;
+//			case 3:
+//				// 设置定位的类型为根据地图面向方向旋转
+//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_MAP_ROTATE));
+//				break;
+//			case 4:
+//				// 定位、且将视角移动到地图中心点，定位点依照设备方向旋转，  并且会跟随设备移动。
+//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE));
+//				break;
+//			case 5 :
+//				// 定位、但不会移动到地图中心点，并且会跟随设备移动。
+//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW_NO_CENTER));
+//				break;
+//			case 6 :
+//				// 定位、但不会移动到地图中心点，地图依照设备方向旋转，并且会跟随设备移动。
+//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_MAP_ROTATE_NO_CENTER));
+//				break;
+//			case 7 :
+//				// 定位、但不会移动到地图中心点，定位点依照设备方向旋转，并且会跟随设备移动。
+//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE_NO_CENTER));
+//				break;
+//		}
+//	}
+//
+//	@Override
+//	public void onNothingSelected(AdapterView<?> parent) {
+//
+//	}
 
 	/**
 	 * 方法必须重写
@@ -242,6 +321,12 @@ import java.util.List;
 	protected void onDestroy() {
 		super.onDestroy();
 		mapView.onDestroy();
+		mListener = null;
+		if (mlocationClient != null) {
+			mlocationClient.stopLocation();
+			mlocationClient.onDestroy();
+		}
+		mlocationClient = null;
 	}
 
 //	@Override
@@ -276,10 +361,13 @@ import java.util.List;
 
 	@Override
 	public void onLocationChanged(AMapLocation amapLocation) {
+		mylon=amapLocation.getLongitude();//获得维度
+		mylat=amapLocation.getLatitude();//获取纬度
+		amapLocation.getLongitude();//获取经度
 		if (mListener != null && amapLocation != null) {
 			if (amapLocation != null && amapLocation.getErrorCode() == 0) {
-
-				mListener.onLocationChanged(amapLocation);// 显示系统小蓝点
+                mylat=amapLocation.getLatitude();//获取纬度
+				Log.i(TAG, String.valueOf(mylat));
 
 			} else {
 				String errText = "定位失败," + amapLocation.getErrorCode() + ": "

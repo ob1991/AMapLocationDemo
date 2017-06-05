@@ -98,7 +98,6 @@ public class main extends Activity {
             map.put("password", password);
             new Thread(new sendValueToServer(map)).start();
         } catch (UnsupportedEncodingException e1) {
-            // TODO Auto-generated catch block
             e1.printStackTrace();
         }
     }

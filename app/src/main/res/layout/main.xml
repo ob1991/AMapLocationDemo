@@ -3,9 +3,15 @@
     android:orientation="vertical" android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <Button
-        android:id="@+id/button_f"
+
+    <TextView
+        android:id="@+id/textView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="确定" />
+        android:text="TextView" />
+    <Button
+    android:id="@+id/button_f"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="确定" />
 </LinearLayout>
