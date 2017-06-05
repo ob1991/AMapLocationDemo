@@ -1,5 +1,9 @@
 package com.amap.location.demo.DB;
 
+import android.os.Handler;
+import android.os.Message;
+import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -10,18 +14,11 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.TimerTask;
 
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.os.Handler;
-import android.os.Message;
-import android.util.Log;
-
-
 /**
- * Created by Admin on 2017/06/04.
+ * Created by Admin on 2017/06/05.
  */
 
-public class socket extends Thread {
+public class mysocket {
     private String ip = "192.168.16.254";
     private int port = 8080;
     private String TAG = "socket thread";
@@ -32,9 +29,9 @@ public class socket extends Thread {
     BufferedReader in;
     public boolean isRun = true;
     Handler inHandler;
-        int time;
+    int time;
     java.util.Timer timer = new java.util.Timer(true);
-    public socket(Handler handlerin,String ip,int port,int time) {
+    public mysocket(Handler handlerin,String ip,int port,int time) {
         inHandler = handlerin;
         this.ip=ip;
         this.port=port;
@@ -74,13 +71,12 @@ public class socket extends Thread {
     /**
      * 实时接受数据
      */
-    @Override
     public void run() {
 //        MyLog.i(TAG, "线程socket开始运行");
         conn();
         TimerTask task = new TimerTask() {
             public void run() {
-            //// TODO: 2017/06/05
+                //// TODO: 2017/06/05
                 Send(toStringHex("0203000100035438"));
             }
         };

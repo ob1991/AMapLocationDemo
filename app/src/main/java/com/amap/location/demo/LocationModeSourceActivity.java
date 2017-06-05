@@ -30,13 +30,16 @@ import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.MyLocationStyle;
 import com.amap.api.maps.model.PolylineOptions;
 import com.amap.location.demo.DB.NetUtils;
+import com.amap.location.demo.DB.mysocket;
 import com.amap.location.demo.DB.socket;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,9 +61,13 @@ import static android.content.ContentValues.TAG;
     private final String url="http://202.118.16.50:8101/data.ashx";
 	private MyLocationStyle myLocationStyle;
 	private AMapLocationClient mlocationClient;
-	private OnLocationChangedListener mListener;
+	private LocationSource.OnLocationChangedListener mListener;
 	private AMapLocationClientOption mLocationOption;
     private double mylat,mylon;
+//	LatLng a=new LatLng(41.766996,123.420425);
+//	LatLng b=new LatLng(41.823000,123.450000);
+	//标识，用于判断是否只显示一次定位信息和用户重新定位
+	private boolean isFirstLoc = true;
     String name,password;
     private Handler handler=new Handler(){
         @Override
@@ -104,7 +111,6 @@ import static android.content.ContentValues.TAG;
         password= this.getIntent().getStringExtra("password");
         mapView = (MapView) findViewById(R.id.map);
 		mapView.onCreate(savedInstanceState);// 此方法必须重写
-
 		init();
 	}
 
@@ -114,6 +120,7 @@ import static android.content.ContentValues.TAG;
 	private void init() {
 		if (aMap == null) {
 			aMap = mapView.getMap();
+			aMap.setLocationSource(this);
 			aMap.getUiSettings().setRotateGesturesEnabled(false);
 			aMap.moveCamera(CameraUpdateFactory.zoomBy(6));
 			setUpMap();
@@ -127,7 +134,31 @@ import static android.content.ContentValues.TAG;
 //		spinnerGps.setOnItemSelectedListener(this);
 //		设置SDK 自带定位消息监听
 	}
-
+	//定位
+	private void initLoc() {
+		//初始化定位
+		mlocationClient = new AMapLocationClient(getApplicationContext());
+		//设置定位回调监听
+		mlocationClient.setLocationListener(this);
+		//初始化定位参数
+		mLocationOption = new AMapLocationClientOption();
+		//设置定位模式为高精度模式，Battery_Saving为低功耗模式，Device_Sensors是仅设备模式
+		mLocationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);
+		//设置是否返回地址信息（默认返回地址信息）
+		mLocationOption.setNeedAddress(true);
+		//设置是否只定位一次,默认为false
+		mLocationOption.setOnceLocation(false);
+		//设置是否强制刷新WIFI，默认为强制刷新
+		mLocationOption.setWifiActiveScan(true);
+		//设置是否允许模拟位置,默认为false，不允许模拟位置
+		mLocationOption.setMockEnable(false);
+		//设置定位间隔,单位毫秒,默认为2000ms
+		mLocationOption.setInterval(2000);
+		//给定位客户端对象设置定位参数
+		mlocationClient.setLocationOption(mLocationOption);
+		//启动定位
+		mlocationClient.startLocation();
+	}
 	/**
 	 * 设置一些amap的属性
 	 */
@@ -138,12 +169,14 @@ import static android.content.ContentValues.TAG;
 		aMap.getUiSettings().setMyLocationButtonEnabled(true);// 设置默认定位按钮是否显示
 		aMap.setMyLocationEnabled(true);// 设置为true表示显示定位层并可触发定位，false表示隐藏定位层并不可触发定位，默认是false
 		aMap.setMapTextZIndex(2);
-		aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE));
+		//aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE));
 		aMap.getUiSettings().setLogoBottomMargin(-50);
+		initLoc();
+//		addPolylinesWithColors(a,b,8f,1,1);
         btnget();
         // TODO: 2017/06/05
-//        socket mysocket=new socket(inhandle, new Handler(), new Context() {
-//        })
+        mysocket mysocket=new mysocket(inhandle, "192.118.16.254",8080,30000);
+		mysocket.run();
 	}
 
     class sendValueToServer implements Runnable
@@ -194,21 +227,6 @@ import static android.content.ContentValues.TAG;
 	@Override
 	public void activate(LocationSource.OnLocationChangedListener listener) {
 		mListener = listener;
-		if (mlocationClient == null) {
-			mlocationClient = new AMapLocationClient(this);
-			mLocationOption = new AMapLocationClientOption();
-			// 设置定位监听
-			mlocationClient.setLocationListener(this);
-			// 设置为高精度定位模式
-			mLocationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);
-			// 只是为了获取当前位置，所以设置为单次定位
-			mLocationOption.setOnceLocation(false);
-			//设置定位间隔,单位毫秒,默认为2000ms
-			mLocationOption.setInterval(2000);
-			// 设置定位参数
-			mlocationClient.setLocationOption(mLocationOption);
-			mlocationClient.startLocation();
-		}
 	}
 
 
@@ -235,7 +253,7 @@ import static android.content.ContentValues.TAG;
 		colorList.add(Color.BLACK);
 
 		PolylineOptions options = new PolylineOptions();
-		options.width(width);//设置宽度
+		options.width(width*10);//设置宽度
 
 		//加入四个点
 		options.add(latlng1,latlng2);
@@ -329,50 +347,42 @@ import static android.content.ContentValues.TAG;
 		mlocationClient = null;
 	}
 
-//	@Override
-//	public void onMyLocationChange(Location location) {
-//		// 定位回调监听
-//		if(location != null) {
-//			Log.e("amap", "onMyLocationChange 定位成功， lat: " + location.getLatitude() + " lon: " + location.getLongitude());
-//			Bundle bundle = location.getExtras();
-//
-//			if(bundle != null) {
-//				location.getLatitude();//获取纬度
-//				location.getLongitude();//获取经度
-//				int errorCode = bundle.getInt(MyLocationStyle.ERROR_CODE);
-//				String errorInfo = bundle.getString(MyLocationStyle.ERROR_INFO);
-//				// 定位类型，可能为GPS WIFI等，具体可以参考官网的定位SDK介绍
-//				int locationType = bundle.getInt(MyLocationStyle.LOCATION_TYPE);
-//
-//                /*
-//                errorCode
-//                errorInfo
-//                locationType
-//                */
-//				Log.e("amap", "定位信息， code: " + errorCode + " errorInfo: " + errorInfo + " locationType: " + locationType );
-//			} else {
-//				Log.e("amap", "定位信息， bundle is null ");
-//			}
-//		} else {
-//			Log.e("amap", "定位失败");
-//		}
-//	}
-
-
 	@Override
 	public void onLocationChanged(AMapLocation amapLocation) {
-		mylon=amapLocation.getLongitude();//获得维度
-		mylat=amapLocation.getLatitude();//获取纬度
-		amapLocation.getLongitude();//获取经度
-		if (mListener != null && amapLocation != null) {
-			if (amapLocation != null && amapLocation.getErrorCode() == 0) {
-                mylat=amapLocation.getLatitude();//获取纬度
-				Log.i(TAG, String.valueOf(mylat));
+		if (amapLocation != null) {
+			if (amapLocation.getErrorCode() == 0) {
+				//定位成功回调信息，设置相关消息
+				 amapLocation.getLocationType();//获取当前定位结果来源，如网络定位结果，详见官方定位类型表
+				mylat = amapLocation.getLatitude();//获取纬度
+				mylon = amapLocation.getLongitude();//获取经度
+				SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+				Date date = new Date(amapLocation.getTime());
+				df.format(date);//定位时间
+
+
+				// 如果不设置标志位，此时再拖动地图时，它会不断将地图移动到当前的位置
+				if (isFirstLoc) {
+					//设置缩放级别
+					aMap.moveCamera(CameraUpdateFactory.zoomTo(17));
+					//将地图移动到定位点
+					aMap.moveCamera(CameraUpdateFactory.changeLatLng(new LatLng(amapLocation.getLatitude(), amapLocation.getLongitude())));
+					//点击定位按钮 能够将地图的中心移动到定位点
+					mListener.onLocationChanged(amapLocation);
+					//获取定位信息
+					StringBuffer buffer = new StringBuffer();
+					buffer.append(amapLocation.getCountry() + "" + amapLocation.getProvince() + "" + amapLocation.getCity() + "" + amapLocation.getProvince() + "" + amapLocation.getDistrict() + "" + amapLocation.getStreet() + "" + amapLocation.getStreetNum());
+					Toast.makeText(getApplicationContext(), buffer.toString(), Toast.LENGTH_LONG).show();
+					isFirstLoc = false;
+				}
+
 
 			} else {
-				String errText = "定位失败," + amapLocation.getErrorCode() + ": "
-						+ amapLocation.getErrorInfo();
-				Log.e("AmapErr", errText);
+				//显示错误信息ErrCode是错误码，errInfo是错误信息，详见错误码表。
+				Log.e("AmapError", "location Error, ErrCode:"
+						+ amapLocation.getErrorCode() + ", errInfo:"
+						+ amapLocation.getErrorInfo());
+
+				Toast.makeText(getApplicationContext(), "定位失败", Toast.LENGTH_LONG).show();
 			}
 		}
 	}
