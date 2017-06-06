@@ -3,6 +3,7 @@ package com.amap.location.demo;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -33,12 +34,18 @@ public class main extends Activity {
     private Button bt2;
     private EditText textname;
     private EditText textpassword;
+    SharedPreferences sp;
     private Handler handler=new Handler(){
         @Override
         public void handleMessage(Message msg) {
-            // TODO Auto-generated method stub
             if (msg.what==1) {
                 if(msg.obj!=null&& msg.obj.toString().equals("1")){
+                    String ip = textname.getText().toString();
+                    String port = textpassword.getText().toString();
+                    SharedPreferences.Editor editor = sp.edit();
+                    editor.putString("name", ip);
+                    editor.putString("password", port);
+                    editor.commit();//保存新数据
                     Toast.makeText(main.this, R.string.ok, Toast.LENGTH_SHORT).show();
                     Intent intent =new Intent(main.this,LocationModeSourceActivity.class);
                     intent.putExtra("name",textname.getText().toString());
@@ -61,6 +68,9 @@ public class main extends Activity {
         bt1=(Button) findViewById(R.id.button_login);
         bt1.setOnClickListener(new mybuttonlistener());
         bt2=(Button) findViewById(R.id.button_regin);
+        sp = this.getSharedPreferences("SP", MODE_PRIVATE);
+        textname.setText(sp.getString("name", ""));
+        textpassword.setText(sp.getString("password", ""));
         bt2.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view) {
@@ -102,7 +112,6 @@ public class main extends Activity {
         }
     }
     private class mybuttonlistener implements View.OnClickListener {
-
         @Override
         public void onClick(View v) {
             btnget();

@@ -2,8 +2,6 @@ package com.amap.location.demo;
 
 
 import android.app.Activity;
-import android.content.Context;
-import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
@@ -11,8 +9,6 @@ import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 
 import android.widget.Button;
 import android.widget.Spinner;
@@ -26,24 +22,17 @@ import com.amap.api.maps.AMap;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.LocationSource;
 import com.amap.api.maps.MapView;
-import com.amap.api.maps.UiSettings;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.MyLocationStyle;
 import com.amap.api.maps.model.PolylineOptions;
+import com.amap.location.demo.DB.ACache;
 import com.amap.location.demo.DB.NetUtils;
-import com.amap.location.demo.DB.mysocket;
 import com.amap.location.demo.DB.socket;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -58,29 +47,29 @@ import java.util.Map;
 		LocationSource
 //		,AdapterView.OnItemSelectedListener
 	{
-	private AMap aMap;
-	private MapView mapView;
-	private Spinner spinnerGps;
-	private String[] itemLocationTypes = { "10S", "20S", "30S", "40S", "60S", "90S", "120S", "180S" };
-    private final String url="http://202.118.16.50:8101/data.ashx";
-	private MyLocationStyle myLocationStyle;
-	private AMapLocationClient mlocationClient;
-	private LocationSource.OnLocationChangedListener mListener;
-	private AMapLocationClientOption mLocationOption;
-    private double mylat,mylon;
-	private Button bt1;
-	//标识，用于判断是否只显示一次定位信息和用户重新定位
-	private boolean isFirstLoc = true;
-    String name,password;
-    private Handler handler=new Handler(){
+        private AMap aMap;
+        private MapView mapView;
+        private Spinner spinnerGps;
+        private String[] itemLocationTypes = { "10S", "20S", "30S", "40S", "60S", "90S", "120S", "180S" };
+        private final String url="http://202.118.16.50:8101/data.ashx";
+        private MyLocationStyle myLocationStyle;
+        private AMapLocationClient mlocationClient;
+        private LocationSource.OnLocationChangedListener mListener;
+        private AMapLocationClientOption mLocationOption;
+        private double mylat,mylon;
+        private Button bt1;
+        //标识，用于判断是否只显示一次定位信息和用户重新定位
+        private boolean isFirstLoc = true;
+        String name,password;
+        ACache mCache = ACache.get(this);
+
+        private Handler handler=new Handler(){
         @Override
         public void handleMessage(Message msg) {
-            // TODO Auto-generated method stub
             if (msg.what==1) {
                 if(msg.obj!=null){
                     parseJSONWithJSONObject(msg.obj.toString());
                 }else{
-
                 }
             }
         }
@@ -89,12 +78,10 @@ import java.util.Map;
         @Override
         public void handleMessage(Message msg) {
             // TODO Auto-generated method stub
-            if (msg.what==1) {
-                if(msg.obj!=null){
-                    parseJSONWithJSONObject(msg.obj.toString());
-                }else{
-                    Toast.makeText(LocationModeSourceActivity.this, R.string.error, Toast.LENGTH_SHORT).show();
-                }
+            if(msg.obj!=null){
+                Toast.makeText(LocationModeSourceActivity.this, msg.obj.toString(), Toast.LENGTH_SHORT).show();
+            }else{
+                Toast.makeText(LocationModeSourceActivity.this, R.string.error, Toast.LENGTH_SHORT).show();
             }
         }
     };
@@ -105,35 +92,37 @@ import java.util.Map;
 		super.onStop();
 	}
 
-	private static String IpAddress = "192.168.16.254";
-	private static int Port = 8080;
-	Socket socket = null;
-	public void sendMsg() {
-
-		try {
-			// 创建socket对象，指定服务器端地址和端口号
-			socket = new Socket(IpAddress, Port);
-			// 获取 Client 端的输出流
-			PrintWriter out = new PrintWriter(new BufferedWriter(
-					new OutputStreamWriter(socket.getOutputStream())), true);
-			// 填充信息
-			out.println();
-			System.out.println("112312313132132");
-			// 关闭
-
-		} catch (UnknownHostException e1) {
-			e1.printStackTrace();
-			} catch (IOException e1) {
-			e1.printStackTrace();
-		} finally {
-			try {
-				socket.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
-	}
+//	private static String IpAddress = "192.168.16.254";
+//	private static int Port = 8080;
+//	Socket socket = null;
+//	public void sendMsg() {
+//
+//		try {
+//			// 创建socket对象，指定服务器端地址和端口号
+//			socket = new Socket(IpAddress, Port);
+//			// 获取 Client 端的输出流
+//			PrintWriter out = new PrintWriter(new BufferedWriter(
+//					new OutputStreamWriter(socket.getOutputStream())), true);
+//			// 填充信息
+//            char[] a=new char[]{'2','3'};
+//
+//			out.print(a);
+//            out.flush();
+//			// 关闭
+//
+//		} catch (UnknownHostException e1) {
+//			e1.printStackTrace();
+//			} catch (IOException e1) {
+//			e1.printStackTrace();
+//		} finally {
+//			try {
+//				socket.close();
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			}
+//		}
+//
+//	}
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -146,12 +135,14 @@ import java.util.Map;
 		bt1.setOnClickListener(new View.OnClickListener(){
 			@Override
 			public void onClick(View view) {
-				new Thread() {
-					@Override
-					public void run() {
-						sendMsg();
-					}
-				}.start();
+//				new Thread() {
+//					@Override
+//					public void run() {
+//						sendMsg();
+//					}
+//				}.start();
+                socket mysocket=new socket(inhandle,"192.168.16.254",8080,3000);
+                mysocket.start();
 			}
 		});
 		mapView.onCreate(savedInstanceState);// 此方法必须重写
@@ -244,7 +235,6 @@ import java.util.Map;
             Thread a=new Thread(new LocationModeSourceActivity.sendValueToServer(map));
 			a.start();
         } catch (UnsupportedEncodingException e1) {
-            // TODO Auto-generated catch block
             e1.printStackTrace();
         }
     }

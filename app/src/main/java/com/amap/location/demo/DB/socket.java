@@ -31,12 +31,12 @@ public class socket extends Thread {
     Handler inHandler;
         int time;
     java.util.Timer timer = new java.util.Timer(true);
+
     public socket(Handler handlerin,String ip,int port,int time) {
         inHandler = handlerin;
         this.ip=ip;
         this.port=port;
         this.time=time;
-//        MyLog.i(TAG, "创建线程socket");
     }
 
     /**
@@ -71,7 +71,6 @@ public class socket extends Thread {
         conn();
         TimerTask task = new TimerTask() {
             public void run() {
-            //// TODO: 2017/06/05
                 Send(toStringHex("0203000100035438"));
             }
         };
@@ -80,10 +79,13 @@ public class socket extends Thread {
         while (isRun) {
             try {
                 if (client != null) {
+                    Log.i(TAG, "2.检测数据");
                     while ((line = in.readLine()) != null) {
+                        Log.i(TAG, "3.getdata" + line + " len=" + line.length());
+                        Log.i(TAG, "4.start set Message");
                         Message msg = inHandler.obtainMessage();
                         msg.obj = line;
-                        inHandler.sendMessage(msg);// 结果返回给UI处理
+                            inHandler.sendMessage(msg);
                     }
                 } else {
                     conn();
@@ -102,7 +104,7 @@ public class socket extends Thread {
     public void Send(String mess) {
         try {
             if (client != null) {
-                out.println(mess);
+                out.print(mess);
                 out.flush();
             } else {
                 conn();
@@ -144,16 +146,12 @@ public class socket extends Thread {
     public void close() {
         try {
             if (client != null) {
-//                MyLog.i(TAG, "close in");
                 in.close();
-//                MyLog.i(TAG, "close out");
                 out.close();
-//                MyLog.i(TAG, "close client");
                 client.close();
                 timer.cancel();
             }
         } catch (Exception e) {
-//            MyLog.i(TAG, "close err");
             e.printStackTrace();
         }
     }
