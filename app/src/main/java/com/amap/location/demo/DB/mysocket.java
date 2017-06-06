@@ -76,7 +76,7 @@ public class mysocket {
         conn();
         TimerTask task = new TimerTask() {
             public void run() {
-                //// TODO: 2017/06/05
+                // TODO: 2017/06/05
                 Send(toStringHex("0203000100035438"));
             }
         };
@@ -113,22 +113,17 @@ public class mysocket {
      */
     public void Send(String mess) {
         try {
-            if (client != null) {
-//                MyLog.i(TAG1, "发送" + mess + "至"
-//                        + client.getInetAddress().getHostAddress() + ":"
-//                        + String.valueOf(client.getPort()));
+            if (client != null)
+            {
                 out.println(mess);
                 out.flush();
-//                MyLog.i(TAG1, "发送成功");
             } else {
                 conn();
             }
 
         } catch (Exception e) {
-//            MyLog.i(TAG1, "send error");
             e.printStackTrace();
         } finally {
-//            MyLog.i(TAG1, "发送完毕");
         }
     }
     public String toStringHex(String s)
@@ -161,16 +156,12 @@ public class mysocket {
     public void close() {
         try {
             if (client != null) {
-//                MyLog.i(TAG, "close in");
                 in.close();
-//                MyLog.i(TAG, "close out");
                 out.close();
-//                MyLog.i(TAG, "close client");
                 client.close();
                 timer.cancel();
             }
         } catch (Exception e) {
-//            MyLog.i(TAG, "close err");
             e.printStackTrace();
         }
     }

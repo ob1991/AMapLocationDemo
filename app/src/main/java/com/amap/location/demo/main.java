@@ -64,7 +64,7 @@ public class main extends Activity {
         bt2.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view) {
-                Intent intent =new Intent(main.this,GeoFence_Activity.class);
+                Intent intent =new Intent(main.this,LocationModeSourceActivity.class);
                 startActivity(intent);
             }
         });

@@ -14,6 +14,7 @@ import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 
+import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.Toast;
 
@@ -36,16 +37,19 @@ import com.amap.location.demo.DB.socket;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static android.content.ContentValues.TAG;
-
 /**
  * AMapV2地图中介绍定位几种类型
  */
@@ -53,7 +57,7 @@ import static android.content.ContentValues.TAG;
 		implements AMapLocationListener,
 		LocationSource
 //		,AdapterView.OnItemSelectedListener
-{
+	{
 	private AMap aMap;
 	private MapView mapView;
 	private Spinner spinnerGps;
@@ -64,8 +68,7 @@ import static android.content.ContentValues.TAG;
 	private LocationSource.OnLocationChangedListener mListener;
 	private AMapLocationClientOption mLocationOption;
     private double mylat,mylon;
-//	LatLng a=new LatLng(41.766996,123.420425);
-//	LatLng b=new LatLng(41.823000,123.450000);
+	private Button bt1;
 	//标识，用于判断是否只显示一次定位信息和用户重新定位
 	private boolean isFirstLoc = true;
     String name,password;
@@ -100,6 +103,35 @@ import static android.content.ContentValues.TAG;
 	protected void onStop()
 	{
 		super.onStop();
+	}
+
+	private static String IpAddress = "192.168.16.254";
+	private static int Port = 8080;
+	Socket socket = null;
+	public void sendMsg() {
+
+		try {
+			// 创建socket对象，指定服务器端地址和端口号
+			socket = new Socket(IpAddress, Port);
+			// 获取 Client 端的输出流
+			PrintWriter out = new PrintWriter(new BufferedWriter(
+					new OutputStreamWriter(socket.getOutputStream())), true);
+			// 填充信息
+			out.println();
+			System.out.println("112312313132132");
+			// 关闭
+
+		} catch (UnknownHostException e1) {
+			e1.printStackTrace();
+			} catch (IOException e1) {
+			e1.printStackTrace();
+		} finally {
+			try {
+				socket.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 
 	}
 	@Override
@@ -110,6 +142,18 @@ import static android.content.ContentValues.TAG;
         name= this.getIntent().getStringExtra("name");
         password= this.getIntent().getStringExtra("password");
         mapView = (MapView) findViewById(R.id.map);
+		bt1=(Button) findViewById(R.id.pull);
+		bt1.setOnClickListener(new View.OnClickListener(){
+			@Override
+			public void onClick(View view) {
+				new Thread() {
+					@Override
+					public void run() {
+						sendMsg();
+					}
+				}.start();
+			}
+		});
 		mapView.onCreate(savedInstanceState);// 此方法必须重写
 		init();
 	}
@@ -172,11 +216,7 @@ import static android.content.ContentValues.TAG;
 		//aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE));
 		aMap.getUiSettings().setLogoBottomMargin(-50);
 		initLoc();
-//		addPolylinesWithColors(a,b,8f,1,1);
         btnget();
-        // TODO: 2017/06/05
-        mysocket mysocket=new mysocket(inhandle, "192.118.16.254",8080,30000);
-		mysocket.run();
 	}
 
     class sendValueToServer implements Runnable
@@ -374,14 +414,11 @@ import static android.content.ContentValues.TAG;
 					Toast.makeText(getApplicationContext(), buffer.toString(), Toast.LENGTH_LONG).show();
 					isFirstLoc = false;
 				}
-
-
 			} else {
-				//显示错误信息ErrCode是错误码，errInfo是错误信息，详见错误码表。
+
 				Log.e("AmapError", "location Error, ErrCode:"
 						+ amapLocation.getErrorCode() + ", errInfo:"
 						+ amapLocation.getErrorInfo());
-
 				Toast.makeText(getApplicationContext(), "定位失败", Toast.LENGTH_LONG).show();
 			}
 		}
