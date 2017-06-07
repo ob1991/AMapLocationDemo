@@ -1,7 +1,7 @@
 package com.amap.location.demo.DB;
 
 import com.amap.api.maps.model.LatLng;
-
+import com.google.gson.*;
 import java.io.Serializable;
 import java.util.Date;
 
@@ -13,6 +13,7 @@ public class mark implements Serializable {
     public Date date ;
     public LatLng mylatlng;
     public double temperature;
+
     public mark(Date date, LatLng mylatlng, double temperature) {
         this.date = date;
         this.mylatlng = mylatlng;
@@ -20,10 +21,8 @@ public class mark implements Serializable {
     }
     @Override
     public String toString() {
-        return "mark{" +
-                "date='" + date.toString() + '\'' +
-                ", mylatlng=" + mylatlng.toString() +
-                ", temperature=" + temperature +
-                '}';
+        Gson gson = new Gson();
+        return gson.toJson(this);
+
     }
 }

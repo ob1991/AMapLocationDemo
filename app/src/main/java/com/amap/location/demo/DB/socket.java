@@ -8,6 +8,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Date;
 import java.util.TimerTask;
 import android.os.Handler;
 import android.os.Message;
@@ -75,16 +76,17 @@ public class socket extends Thread {
             }
         };
         String line = "";
+        int len=0;
+        char[] data = new char[1024];
         timer.schedule(task, 20, time);
         while (isRun) {
             try {
                 if (client != null) {
                     Log.i(TAG, "2.检测数据");
-                    while ((line = in.readLine()) != null) {
-                        Log.i(TAG, "3.getdata" + line + " len=" + line.length());
-                        Log.i(TAG, "4.start set Message");
+                    while ((len = in.read(data)) >0) {
+                        double value3=((double) data[2]*16*16+(int)data[3])/10.0;
                         Message msg = inHandler.obtainMessage();
-                        msg.obj = line;
+                        msg.obj = value3;
                             inHandler.sendMessage(msg);
                     }
                 } else {
@@ -146,10 +148,16 @@ public class socket extends Thread {
     public void close() {
         try {
             if (client != null) {
+                isRun=false;
                 in.close();
+                Log.i(TAG,"1");
                 out.close();
+                Log.i(TAG,"2");
                 client.close();
+                Log.i(TAG,"3");
                 timer.cancel();
+                Log.i(TAG,"4");
+
             }
         } catch (Exception e) {
             e.printStackTrace();

@@ -2,6 +2,7 @@ package com.amap.location.demo;
 
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
@@ -9,7 +10,10 @@ import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
+import java.lang.reflect.Type;
 
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.Toast;
@@ -25,13 +29,20 @@ import com.amap.api.maps.MapView;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.MyLocationStyle;
 import com.amap.api.maps.model.PolylineOptions;
-import com.amap.location.demo.DB.ACache;
 import com.amap.location.demo.DB.NetUtils;
+import com.amap.location.demo.DB.mark;
 import com.amap.location.demo.DB.socket;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -45,7 +56,7 @@ import java.util.Map;
 	public class LocationModeSourceActivity extends Activity
 		implements AMapLocationListener,
 		LocationSource
-//		,AdapterView.OnItemSelectedListener
+		,AdapterView.OnItemSelectedListener
 	{
         private AMap aMap;
         private MapView mapView;
@@ -58,10 +69,12 @@ import java.util.Map;
         private AMapLocationClientOption mLocationOption;
         private double mylat,mylon;
         private Button bt1;
+		private Button bt2;
+		private int time=30;
         //标识，用于判断是否只显示一次定位信息和用户重新定位
         private boolean isFirstLoc = true;
         String name,password;
-        ACache mCache = ACache.get(this);
+//        ACache mCache = ACache.get(this);
 
         private Handler handler=new Handler(){
         @Override
@@ -79,50 +92,90 @@ import java.util.Map;
         public void handleMessage(Message msg) {
             // TODO Auto-generated method stub
             if(msg.obj!=null){
+				Date date = new Date(System.currentTimeMillis());
+				LatLng latlng =new LatLng(mylat,mylon);
+				mark a=new mark(date,latlng,Double.valueOf(msg.obj.toString()));
+				save(a.toString());
                 Toast.makeText(LocationModeSourceActivity.this, msg.obj.toString(), Toast.LENGTH_SHORT).show();
             }else{
                 Toast.makeText(LocationModeSourceActivity.this, R.string.error, Toast.LENGTH_SHORT).show();
             }
         }
     };
-
+	public void save(String content) {
+		try {
+			FileOutputStream outStream = this.openFileOutput("b.txt", Context.MODE_APPEND);
+			String load=load();
+			if(load.length()==0)
+			{
+				outStream.write("[".getBytes());
+				outStream.write(content.getBytes());
+			}
+			else if(load=="[")
+			outStream.write(content.getBytes());
+			else
+			{
+				outStream.write(",".getBytes());
+				outStream.write(content.getBytes());
+			}
+			outStream.close();
+		} catch (FileNotFoundException e) {
+			return;
+		} catch (IOException e) {
+			return;
+		}
+	}
+	public void complicate(){
+		try {
+			FileOutputStream outStream = this.openFileOutput("b.txt", Context.MODE_APPEND);
+			String load=load();
+			if(load.length()!=0)
+			{
+				outStream.write("]".getBytes());
+			}
+			outStream.close();
+		} catch (FileNotFoundException e) {
+			return;
+		} catch (IOException e) {
+			return;
+		}
+	}
+	public void clear() {
+		try {
+			FileOutputStream outStream = this.openFileOutput("b.txt", Context.MODE_PRIVATE);
+			outStream.write("".getBytes());
+			outStream.close();
+		} catch (FileNotFoundException e) {
+			return;
+		} catch (IOException e) {
+			return;
+		}
+	}
+	public String load() {
+		try {
+			FileInputStream inStream = this.openFileInput("b.txt");
+			ByteArrayOutputStream stream = new ByteArrayOutputStream();
+			byte[] buffer = new byte[1024];
+			int length = -1;
+			while ((length = inStream.read(buffer)) != -1) {
+				stream.write(buffer, 0, length);
+			}
+			stream.close();
+			inStream.close();
+			return stream.toString();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+			return null;
+		} catch (IOException e) {
+			return null;
+		}
+	}
 	@Override
 	protected void onStop()
 	{
 		super.onStop();
 	}
 
-//	private static String IpAddress = "192.168.16.254";
-//	private static int Port = 8080;
-//	Socket socket = null;
-//	public void sendMsg() {
-//
-//		try {
-//			// 创建socket对象，指定服务器端地址和端口号
-//			socket = new Socket(IpAddress, Port);
-//			// 获取 Client 端的输出流
-//			PrintWriter out = new PrintWriter(new BufferedWriter(
-//					new OutputStreamWriter(socket.getOutputStream())), true);
-//			// 填充信息
-//            char[] a=new char[]{'2','3'};
-//
-//			out.print(a);
-//            out.flush();
-//			// 关闭
-//
-//		} catch (UnknownHostException e1) {
-//			e1.printStackTrace();
-//			} catch (IOException e1) {
-//			e1.printStackTrace();
-//		} finally {
-//			try {
-//				socket.close();
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//			}
-//		}
-//
-//	}
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -132,17 +185,36 @@ import java.util.Map;
         password= this.getIntent().getStringExtra("password");
         mapView = (MapView) findViewById(R.id.map);
 		bt1=(Button) findViewById(R.id.pull);
+		bt2=(Button) findViewById(R.id.commit);
+		bt2.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				complicate();
+				String kkk = load();
+				Gson gson = new Gson();
+				Type type = new TypeToken<List<mark>>(){}.getType();
+				List<mark> studentList = gson.fromJson(kkk, type);
+				clear();
+			}
+		});
+		bt1.setText("开始");
 		bt1.setOnClickListener(new View.OnClickListener(){
+			socket mysocket = new socket(inhandle, "192.168.16.254", 8080, time*1000);
 			@Override
 			public void onClick(View view) {
-//				new Thread() {
-//					@Override
-//					public void run() {
-//						sendMsg();
-//					}
-//				}.start();
-                socket mysocket=new socket(inhandle,"192.168.16.254",8080,3000);
-                mysocket.start();
+				if(bt1.getText().toString()=="开始") {
+					inhandle.removeCallbacks(mysocket);
+					mysocket=null;
+					mysocket = new socket(inhandle, "192.168.16.254", 8080, time*1000);
+					mysocket.start();
+					bt1.setText("结束");
+				}
+				else{
+					mysocket.close();
+//					inhandle.removeCallbacks(mysocket);
+					mysocket=null;
+					bt1.setText("开始");
+				}
 			}
 		});
 		mapView.onCreate(savedInstanceState);// 此方法必须重写
@@ -160,14 +232,12 @@ import java.util.Map;
 			aMap.moveCamera(CameraUpdateFactory.zoomBy(6));
 			setUpMap();
 		}
-//		spinnerGps = (Spinner) findViewById(R.id.spinner_gps);
-//		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
-//				android.R.layout.simple_spinner_item, itemLocationTypes);
-//		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-//		spinnerGps.setAdapter(adapter);
-//
-//		spinnerGps.setOnItemSelectedListener(this);
-//		设置SDK 自带定位消息监听
+		spinnerGps = (Spinner) findViewById(R.id.spinner_gps);
+		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+				android.R.layout.simple_spinner_item, itemLocationTypes);
+		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		spinnerGps.setAdapter(adapter);
+		spinnerGps.setOnItemSelectedListener(this);
 	}
 	//定位
 	private void initLoc() {
@@ -224,6 +294,20 @@ import java.util.Map;
             handler.sendMessage(message);
         }
     }
+    //保存数据
+    private  String saveurl="http://202.118.16.50:8101/save.ashx";
+	class sendValueToSave implements Runnable {
+		Map<String, String> map;
+		public sendValueToSave(Map<String, String> map) {
+			this.map = map;
+		}
+		@Override
+		public void run() {
+			String result = NetUtils.getRequest(saveurl, map);
+			Message message = Message.obtain(handler, 1, result);
+			handler.sendMessage(message);
+		}
+	}
     private void btnget()
     {
         try {
@@ -293,47 +377,40 @@ import java.util.Map;
 
 		aMap.addPolyline(options);
 	}
-//	@Override
-//	public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-//		switch (position) {
-//			case 0:
-//				// 只定位，不进行其他操作
-//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_SHOW));
-//				break;
-//			case 1:
-//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATE));
-//				break;
-//			case 2:
-//				// 设置定位的类型为 跟随模式
-//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW));
-//				break;
-//			case 3:
-//				// 设置定位的类型为根据地图面向方向旋转
-//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_MAP_ROTATE));
-//				break;
-//			case 4:
-//				// 定位、且将视角移动到地图中心点，定位点依照设备方向旋转，  并且会跟随设备移动。
-//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE));
-//				break;
-//			case 5 :
-//				// 定位、但不会移动到地图中心点，并且会跟随设备移动。
-//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW_NO_CENTER));
-//				break;
-//			case 6 :
-//				// 定位、但不会移动到地图中心点，地图依照设备方向旋转，并且会跟随设备移动。
-//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_MAP_ROTATE_NO_CENTER));
-//				break;
-//			case 7 :
-//				// 定位、但不会移动到地图中心点，定位点依照设备方向旋转，并且会跟随设备移动。
-//				aMap.setMyLocationStyle(myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE_NO_CENTER));
-//				break;
-//		}
-//	}
-//
-//	@Override
-//	public void onNothingSelected(AdapterView<?> parent) {
-//
-//	}
+	@Override
+	public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+		switch (position) {
+			case 0:
+				time=10;
+				break;
+			case 1:
+				time=20;
+				break;
+			case 2:
+				time=30;
+				break;
+			case 3:
+				time=40;
+				break;
+			case 4:
+				time=60;
+				break;
+			case 5 :
+				time=90;
+				break;
+			case 6 :
+				time=120;
+				break;
+			case 7 :
+				time=180;
+				break;
+		}
+	}
+
+	@Override
+	public void onNothingSelected(AdapterView<?> parent) {
+		time=30*100;
+	}
 
 	/**
 	 * 方法必须重写
@@ -387,9 +464,7 @@ import java.util.Map;
 				mylon = amapLocation.getLongitude();//获取经度
 				SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 				Date date = new Date(amapLocation.getTime());
-				df.format(date);//定位时间
-
-
+				String aaa=df.format(date);//定位时间
 				// 如果不设置标志位，此时再拖动地图时，它会不断将地图移动到当前的位置
 				if (isFirstLoc) {
 					//设置缩放级别
