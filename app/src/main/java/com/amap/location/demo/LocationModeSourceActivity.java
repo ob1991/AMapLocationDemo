@@ -4,6 +4,7 @@ package com.amap.location.demo;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -75,24 +76,36 @@ import java.util.Map;
         private boolean isFirstLoc = true;
         String name,password;
 //        ACache mCache = ACache.get(this);
+		private Handler handler=new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			if (msg.what == 1) {
+				if (msg.obj != null) {
+					parseJSONWithJSONObject(msg.obj.toString());
+				} else {
+				}
+			}
+		}
+	};
 
-        private Handler handler=new Handler(){
-        @Override
-        public void handleMessage(Message msg) {
-            if (msg.what==1) {
-                if(msg.obj!=null){
-                    parseJSONWithJSONObject(msg.obj.toString());
-                }else{
-                }
-            }
-        }
-    };
+		private Handler savehandler=new Handler() {
+			@Override
+			public void handleMessage(Message msg) {
+				if (msg.what == 1) {
+					if (msg.obj.toString().length()<=0) {
+						Toast.makeText(LocationModeSourceActivity.this, "未连接网络", Toast.LENGTH_SHORT).show();
+					} else {
+					}
+				}
+			}
+		};
     private Handler inhandle=new Handler(){
         @Override
         public void handleMessage(Message msg) {
             // TODO Auto-generated method stub
             if(msg.obj!=null){
-				Date date = new Date(System.currentTimeMillis());
+				SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+				String date=df.format(new Date(System.currentTimeMillis()));//定位时间
 				LatLng latlng =new LatLng(mylat,mylon);
 				mark a=new mark(date,latlng,Double.valueOf(msg.obj.toString()));
 				save(a.toString());
@@ -102,6 +115,7 @@ import java.util.Map;
             }
         }
     };
+
 	public void save(String content) {
 		try {
 			FileOutputStream outStream = this.openFileOutput("b.txt", Context.MODE_APPEND);
@@ -129,7 +143,7 @@ import java.util.Map;
 		try {
 			FileOutputStream outStream = this.openFileOutput("b.txt", Context.MODE_APPEND);
 			String load=load();
-			if(load.length()!=0)
+			if(load.length()!=0&&load.indexOf(']')==-1)
 			{
 				outStream.write("]".getBytes());
 			}
@@ -191,10 +205,18 @@ import java.util.Map;
 			public void onClick(View v) {
 				complicate();
 				String kkk = load();
-				Gson gson = new Gson();
-				Type type = new TypeToken<List<mark>>(){}.getType();
-				List<mark> studentList = gson.fromJson(kkk, type);
-				clear();
+				if(kkk.length()!=0) {
+					Gson gson = new Gson();
+					Type type = new TypeToken<List<mark>>() {
+					}.getType();
+					List<mark> studentList = gson.fromJson(kkk, type);
+					for (mark ma : studentList) {
+						savetodb(ma.date, ma.mylatlng.latitude, ma.mylatlng.longitude, ma.temperature);
+					}
+					clear();
+				}
+				else
+					Toast.makeText(LocationModeSourceActivity.this,"本地缓存为空", Toast.LENGTH_SHORT).show();
 			}
 		});
 		bt1.setText("开始");
@@ -304,8 +326,23 @@ import java.util.Map;
 		@Override
 		public void run() {
 			String result = NetUtils.getRequest(saveurl, map);
-			Message message = Message.obtain(handler, 1, result);
-			handler.sendMessage(message);
+			Message message = Message.obtain(savehandler, 1, result);
+			savehandler.sendMessage(message);
+		}
+	}
+	private void savetodb(String time,double lat,double lon,double temp)
+	{
+		try {
+			time = new String(time.getBytes("ISO8859-1"), "UTF-8");
+			Map<String, String> map=new HashMap<String, String>();
+			map.put("date",time);
+			map.put("lat", Double.toString(lat));
+			map.put("lon", Double.toString(lon));
+			map.put("temperature",Double.toString(temp));
+			Thread a=new Thread(new LocationModeSourceActivity.sendValueToSave(map));
+			a.start();
+		} catch (UnsupportedEncodingException e1) {
+			e1.printStackTrace();
 		}
 	}
     private void btnget()

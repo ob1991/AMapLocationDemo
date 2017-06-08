@@ -2,6 +2,8 @@ package com.amap.location.demo.DB;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -27,7 +29,7 @@ public class socket extends Thread {
 
     public Socket client = null;
     PrintWriter out;
-    BufferedReader in;
+    DataInputStream in;
     public boolean isRun = true;
     Handler inHandler;
         int time;
@@ -49,8 +51,8 @@ public class socket extends Thread {
             Log.i(TAG, "连接中……");
             client = new Socket(ip, port);
             client.setSoTimeout(timeout);// 设置阻塞时间
-            in = new BufferedReader(new InputStreamReader(
-                    client.getInputStream()));
+            in = new DataInputStream(
+                    client.getInputStream());
             out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
                     client.getOutputStream())), true);
         } catch (UnknownHostException e) {
@@ -77,14 +79,14 @@ public class socket extends Thread {
         };
         String line = "";
         int len=0;
-        char[] data = new char[1024];
+        byte[] data = new byte[10];
         timer.schedule(task, 20, time);
         while (isRun) {
             try {
                 if (client != null) {
                     Log.i(TAG, "2.检测数据");
                     while ((len = in.read(data)) >0) {
-                        double value3=((double) data[2]*16*16+(int)data[3])/10.0;
+                        double value3=((data[2]&0xff)*16*16+(data[3]&0xff))/10.0;
                         Message msg = inHandler.obtainMessage();
                         msg.obj = value3;
                             inHandler.sendMessage(msg);

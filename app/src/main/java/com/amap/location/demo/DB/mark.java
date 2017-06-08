@@ -10,11 +10,11 @@ import java.util.Date;
  */
 
 public class mark implements Serializable {
-    public Date date ;
+    public String date ;
     public LatLng mylatlng;
     public double temperature;
 
-    public mark(Date date, LatLng mylatlng, double temperature) {
+    public mark(String date, LatLng mylatlng, double temperature) {
         this.date = date;
         this.mylatlng = mylatlng;
         this.temperature = temperature;
